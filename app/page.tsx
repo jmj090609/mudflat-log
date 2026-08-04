@@ -30,7 +30,9 @@ export default function Home() {
   const [darkMode, setDarkMode] = useState(false);
   const [form, setForm] = useState({ location: "부산 갯벌 탐방 구역", habitat: "펄과 모래가 섞인 갯벌", notes: "", temporaryName: "", mergeId: "" });
 
-  useEffect(() => { const raw = localStorage.getItem(authKey); if (raw) { const saved = JSON.parse(raw) as UserProfile; if (!saved.isGuest) { setProfile(saved); setData(loadData(saved)); setView("home"); } } }, []);
+  // A public shared device must never restore a previous visitor automatically.
+  // Observation data remains saved per account, but entering it always requires login.
+  useEffect(() => { localStorage.removeItem(authKey); }, []);
   useEffect(() => { if (data) saveData(data); }, [data]);
   useEffect(() => { setDarkMode(localStorage.getItem("mudflat-log:theme") === "dark"); }, []);
   useEffect(() => { document.documentElement.dataset.theme = darkMode ? "dark" : "light"; localStorage.setItem("mudflat-log:theme", darkMode ? "dark" : "light"); }, [darkMode]);
