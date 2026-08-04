@@ -44,7 +44,7 @@ export default function Home() {
   const guest = () => enter({ id: guestId, nickname: "체험 탐방자", isGuest: true, joinedAt: new Date().toISOString() });
   const update = (mutate: (current: AppData) => AppData) => setData(current => current ? mutate(current) : current);
   const clearCapture = () => { setPhotos([]); setFiles([]); setResult(null); setSelectedSpecies(null); setForm({ location: "부산 갯벌 탐방 구역", habitat: "펄과 모래가 섞인 갯벌", notes: "", temporaryName: "", mergeId: "" }); };
-  const receivePhotos = async (event: ChangeEvent<HTMLInputElement>) => { const chosen = Array.from(event.target.files ?? []).slice(0, 3); setFiles(chosen); const compressed = await Promise.all(chosen.map(compressImage)); await Promise.allSettled(compressed.map((photo, index) => cachePhoto(`${profile.id}-${Date.now()}-${index}`, photo))); setPhotos(compressed); };
+  const receivePhotos = async (event: ChangeEvent<HTMLInputElement>) => { if (!profile) return; const chosen = Array.from(event.target.files ?? []).slice(0, 3); setFiles(chosen); const compressed = await Promise.all(chosen.map(compressImage)); await Promise.allSettled(compressed.map((photo, index) => cachePhoto(`${profile.id}-${Date.now()}-${index}`, photo))); setPhotos(compressed); };
   const analyze = async () => { if (!photos.length) return setToast("사진을 한 장 이상 등록해 주세요."); setResult(await identifier.identify(photos, demoMode)); setView("result"); };
   const saveObservation = (category: Category, speciesId?: string) => {
     if (!data || !profile) return; const now = new Date().toISOString(); const existing = category === "BASE" ? data.atlas.find(item => item.speciesId === speciesId) : undefined;
