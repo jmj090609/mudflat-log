@@ -1,29 +1,27 @@
 import { Species } from "@/src/types";
 
-const makeSpecies = (index: number): Species => ({
-  // 실제 종 목록 확정 후 교체
-  id: `base-${String(index).padStart(2, "0")}`,
-  koreanName: `기본 생물 ${String(index).padStart(2, "0")}`,
-  scientificName: "Species placeholder",
-  group: index % 3 === 0 ? "게류" : index % 3 === 1 ? "패류" : "저서생물",
-  shortDescription: "실제 탐방 종이 확정되면 바꿀 수 있는 임시 기본 생물입니다.",
-  habitat: index % 2 ? "펄과 모래가 섞인 갯벌" : "바위와 물웅덩이 주변",
-  preferredSubstrate: index % 2 ? "펄갯벌" : "모래갯벌",
-  bestObservationTime: "썰물 전후, 조용히 기다릴 때",
-  bestSeason: "봄~가을",
-  appearanceTraits: "몸의 형태, 무늬, 움직임과 주변 환경을 함께 관찰해 주세요.",
-  ecologicalRole: "갯벌 먹이그물과 유기물 순환에 관여할 가능성이 있습니다.",
-  observationTips: "멀리서 사진으로 관찰하고, 전체 모습과 특징 부위를 함께 기록해 주세요.",
-  caution: "생물을 만지거나 이동시키지 말고, 원래 서식 환경을 훼손하지 않은 상태에서 사진으로만 관찰해 주세요.",
-  discoveryDifficulty: index % 3 === 0 ? "도전" : index % 3 === 1 ? "보통" : "쉬움",
-  silhouetteImage: "◌",
-  isSensitiveSpecies: index === 15,
-  broadObservationAreas: ["부산 연안의 넓은 갯벌 구역", "갯골 또는 물웅덩이 주변"],
-  featureQuestions: [
-    { id: "shape", question: "사진에서 몸의 윤곽이 뚜렷하게 보이나요?", yesHint: "전체 모습이 보이면 비교에 도움이 됩니다." },
-    { id: "habitat", question: "진흙 또는 모래 위에서 관찰했나요?", yesHint: "서식 환경은 후보 비교에 도움이 됩니다." },
-  ],
-});
+const caution = "생물을 만지거나 이동시키지 말고, 원래 서식 환경을 훼손하지 않은 상태에서 사진으로만 관찰해 주세요.";
 
-// 실제 종 목록이 확정되면 이 파일의 데이터만 교체하면 전체 도감에 반영됩니다.
-export const baseSpecies: Species[] = Array.from({ length: 10 }, (_, index) => makeSpecies(index + 1));
+type Seed = Omit<Species, "id" | "silhouetteImage" | "caution" | "isSensitiveSpecies">;
+
+const species: Seed[] = [
+  { koreanName: "칠게", scientificName: "Helice tridens", group: "게류", shortDescription: "갯벌 표면과 굴 주변에서 관찰되는 작은 게입니다.", habitat: "펄갯벌과 갯골 주변", preferredSubstrate: "펄갯벌", bestObservationTime: "썰물 전후", bestSeason: "봄~가을", appearanceTraits: "짙은 갈색의 납작한 등딱지와 옆으로 움직이는 다리", ecologicalRole: "갯벌 표층의 유기물을 먹고 굴을 만들어 토양을 뒤섞습니다.", observationTips: "굴과 몸 전체가 함께 나오도록 낮은 각도에서 촬영해 보세요.", discoveryDifficulty: "쉬움", broadObservationAreas: ["펄갯벌", "갯골 주변"], featureQuestions: [{ id: "claw", question: "두 집게발의 크기가 비슷해 보이나요?", yesHint: "칠게와 농게를 비교하는 데 도움이 됩니다." }, { id: "burrow", question: "갯벌의 작은 굴 주변에 있었나요?", yesHint: "서식 환경을 함께 기록해 주세요." }] },
+  { koreanName: "농게", scientificName: "Austruca lactea", group: "게류", shortDescription: "수컷의 큰 집게발이 눈에 띄는 갯벌 게입니다.", habitat: "모래가 섞인 펄갯벌", preferredSubstrate: "모래와 펄이 섞인 갯벌", bestObservationTime: "썰물 전후", bestSeason: "늦봄~가을", appearanceTraits: "수컷 한쪽 집게발이 매우 크고 밝은 색을 띰", ecologicalRole: "굴을 파고 유기물을 섭식하며 갯벌 토양을 순환시킵니다.", observationTips: "큰 집게발과 굴의 위치가 함께 보이도록 멀리서 촬영해 보세요.", discoveryDifficulty: "보통", broadObservationAreas: ["모래 섞인 갯벌", "조용한 갯골 주변"], featureQuestions: [{ id: "large-claw", question: "한쪽 집게발이 유난히 큰가요?", yesHint: "수컷 농게의 대표적인 특징입니다." }, { id: "open-flat", question: "탁 트인 갯벌 표면에서 보였나요?", yesHint: "관찰한 서식 환경을 비교해 보세요." }] },
+  { koreanName: "갯지렁이", scientificName: "Perinereis aibuhitensis", group: "환형동물", shortDescription: "갯벌 퇴적물 속에서 사는 마디진 몸의 저서생물입니다.", habitat: "펄갯벌의 퇴적물", preferredSubstrate: "펄갯벌", bestObservationTime: "썰물 때", bestSeason: "연중", appearanceTraits: "여러 마디로 이어진 길쭉한 몸과 옆의 작은 다리", ecologicalRole: "유기물을 분해하고 물새와 어류의 먹이가 됩니다.", observationTips: "노출된 개체를 만지지 말고, 주변 퇴적물과 함께 촬영해 보세요.", discoveryDifficulty: "보통", broadObservationAreas: ["펄갯벌", "돌 아래의 젖은 모래"], featureQuestions: [{ id: "segments", question: "몸이 여러 마디로 나뉘어 보이나요?", yesHint: "마디진 몸은 주요 관찰 특징입니다." }, { id: "sediment", question: "펄이나 모래 속에서 보였나요?", yesHint: "서식 위치를 함께 기록해 주세요." }] },
+  { koreanName: "도둑게", scientificName: "Ilyoplax deschampsi", group: "게류", shortDescription: "작고 민첩하게 움직이며 갯벌 표면을 오가는 게입니다.", habitat: "고운 펄과 모래가 섞인 갯벌", preferredSubstrate: "모래 섞인 펄갯벌", bestObservationTime: "썰물 전후", bestSeason: "봄~가을", appearanceTraits: "작은 사각형 등딱지와 빠른 옆걸음", ecologicalRole: "갯벌 표면의 유기물을 먹고 다른 생물의 먹이가 됩니다.", observationTips: "움직임이 빨라서 몸의 윤곽이 보이도록 연속 촬영해 보세요.", discoveryDifficulty: "도전", broadObservationAreas: ["모래 섞인 갯벌", "얕은 갯골 가장자리"], featureQuestions: [{ id: "small-crab", question: "등딱지가 아주 작고 납작해 보이나요?", yesHint: "비슷한 작은 게류와 비교해 보세요." }, { id: "quick", question: "사람이 가까이 가자 빠르게 굴로 숨었나요?", yesHint: "행동 관찰도 도움이 됩니다." }] },
+  { koreanName: "망둥어", scientificName: "Acanthogobius flavimanus", group: "어류", shortDescription: "얕은 물과 갯골에서 관찰되는 바닥 생활 어류입니다.", habitat: "갯골과 물웅덩이", preferredSubstrate: "진흙 바닥", bestObservationTime: "썰물 뒤 남은 물웅덩이", bestSeason: "봄~가을", appearanceTraits: "길쭉한 몸, 넓은 머리, 바닥에 머무는 행동", ecologicalRole: "갯벌 먹이그물에서 작은 무척추동물을 먹고 상위 포식자의 먹이가 됩니다.", observationTips: "물속 생물이 놀라지 않도록 반사를 피해서 물가에서 촬영해 보세요.", discoveryDifficulty: "보통", broadObservationAreas: ["갯골", "물웅덩이 주변"], featureQuestions: [{ id: "fin", question: "등지느러미가 길게 이어져 보이나요?", yesHint: "물고기의 윤곽을 확인해 보세요." }, { id: "pool", question: "얕은 물웅덩이 또는 갯골에서 보였나요?", yesHint: "관찰 장소가 후보 비교에 도움이 됩니다." }] },
+  { koreanName: "쏙", scientificName: "Upogebia major", group: "갑각류", shortDescription: "갯벌 속 깊은 굴을 파고 사는 새우형 갑각류입니다.", habitat: "펄갯벌의 깊은 굴", preferredSubstrate: "펄갯벌", bestObservationTime: "썰물 뒤 굴 입구 관찰", bestSeason: "봄~가을", appearanceTraits: "길쭉한 새우형 몸과 작은 집게발", ecologicalRole: "굴을 만들어 퇴적물의 물과 공기 순환에 영향을 줍니다.", observationTips: "굴을 파내지 말고, 드러난 흔적이나 자연스럽게 노출된 개체만 기록해 주세요.", discoveryDifficulty: "도전", broadObservationAreas: ["펄갯벌", "굴이 많은 갯벌 구역"], featureQuestions: [{ id: "shrimp-body", question: "새우처럼 길쭉한 몸이 보이나요?", yesHint: "게류와 구분하는 데 도움이 됩니다." }, { id: "deep-burrow", question: "깊은 굴 또는 굴 입구 주변에서 보였나요?", yesHint: "굴을 건드리지 말고 사진으로만 기록해 주세요." }] },
+  { koreanName: "맛조개", scientificName: "Solen strictus", group: "패류", shortDescription: "길고 좁은 껍데기를 가진 갯벌 조개입니다.", habitat: "모래가 많은 갯벌", preferredSubstrate: "모래갯벌", bestObservationTime: "썰물 때", bestSeason: "봄~가을", appearanceTraits: "대나무처럼 길고 평행한 두 장의 껍데기", ecologicalRole: "물을 걸러 먹으며 갯벌 수질과 먹이그물에 관여합니다.", observationTips: "채집하지 말고 조개껍데기나 자연스럽게 드러난 흔적을 촬영해 보세요.", discoveryDifficulty: "보통", broadObservationAreas: ["모래갯벌", "완만한 해안가"], featureQuestions: [{ id: "long-shell", question: "껍데기가 길고 좁게 생겼나요?", yesHint: "맛조개의 핵심 외형 특징입니다." }, { id: "sandy", question: "모래가 많은 곳에서 보였나요?", yesHint: "서식 환경을 함께 비교해 보세요." }] },
+  { koreanName: "바지락", scientificName: "Ruditapes philippinarum", group: "패류", shortDescription: "우리 갯벌에서 흔히 만나는 둥근 타원형의 조개입니다.", habitat: "모래와 펄이 섞인 갯벌", preferredSubstrate: "모래 섞인 펄갯벌", bestObservationTime: "썰물 때", bestSeason: "봄~가을", appearanceTraits: "갈색·회색의 타원형 껍데기와 다양한 무늬", ecologicalRole: "물을 걸러 먹으며 갯벌의 유기물 순환에 관여합니다.", observationTips: "껍데기 무늬와 주변 바닥을 함께 촬영하고, 채집하지 마세요.", discoveryDifficulty: "쉬움", broadObservationAreas: ["모래 섞인 갯벌", "조간대"], featureQuestions: [{ id: "oval-shell", question: "껍데기가 둥근 타원형인가요?", yesHint: "맛조개와 비교해 보세요." }, { id: "shell-pattern", question: "껍데기에 갈색 또는 회색 무늬가 있나요?", yesHint: "사진에서 보이는 무늬를 비교해 보세요." }] },
+  { koreanName: "흰물떼새", scientificName: "Charadrius alexandrinus", group: "조류", shortDescription: "모래사장과 갯벌 가장자리를 빠르게 걷는 작은 물새입니다.", habitat: "모래사장과 갯벌 가장자리", preferredSubstrate: "모래", bestObservationTime: "간조 전후와 이른 아침", bestSeason: "연중", appearanceTraits: "밝은 배, 검은 눈가 무늬, 짧은 다리와 부리", ecologicalRole: "작은 무척추동물을 먹는 해안 먹이그물의 구성원입니다.", observationTips: "새에게 가까이 가지 말고 망원 촬영으로 행동을 관찰해 주세요.", discoveryDifficulty: "도전", broadObservationAreas: ["모래사장", "갯벌 가장자리"], featureQuestions: [{ id: "small-shorebird", question: "작은 새가 해안가를 빠르게 걸어 다니나요?", yesHint: "행동과 크기를 함께 비교해 보세요." }, { id: "dark-eye", question: "눈가에 어두운 무늬가 보이나요?", yesHint: "사진이 흐리면 추가 촬영이 필요할 수 있습니다." }] },
+  { koreanName: "쇠백로", scientificName: "Egretta garzetta", group: "조류", shortDescription: "얕은 물가에서 먹이를 찾는 흰색 왜가리류 새입니다.", habitat: "갯골, 물웅덩이, 얕은 연안", preferredSubstrate: "얕은 물가", bestObservationTime: "간조 전후", bestSeason: "연중", appearanceTraits: "흰 깃, 검은 다리, 노란 발가락", ecologicalRole: "작은 물고기와 무척추동물을 먹는 해안 습지의 포식자입니다.", observationTips: "먹이 활동을 방해하지 않도록 충분히 떨어진 곳에서 촬영해 주세요.", discoveryDifficulty: "보통", broadObservationAreas: ["갯골", "물웅덩이 주변", "얕은 연안"], featureQuestions: [{ id: "white-plumage", question: "몸 전체가 흰 깃으로 보이나요?", yesHint: "다른 왜가리류와 비교해 보세요." }, { id: "yellow-feet", question: "검은 다리 끝에 노란 발가락이 보이나요?", yesHint: "쇠백로를 구분하는 데 도움이 됩니다." }] },
+];
+
+// 실제 탐방 대상 종은 이 배열만 교체하면 전체 도감에 반영됩니다.
+export const baseSpecies: Species[] = species.map((item, index) => ({
+  ...item,
+  id: `base-${String(index + 1).padStart(2, "0")}`,
+  silhouetteImage: "◌",
+  caution,
+  isSensitiveSpecies: item.koreanName === "흰물떼새",
+}));
