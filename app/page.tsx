@@ -50,8 +50,8 @@ export default function Home() {
   const receivePhotos = async (event: ChangeEvent<HTMLInputElement>) => { if (!profile) return; const chosen = Array.from(event.target.files ?? []).slice(0, 3); setFiles(chosen); const compressed = await Promise.all(chosen.map(compressImage)); await Promise.allSettled(compressed.map((photo, index) => cachePhoto(`${profile.id}-${Date.now()}-${index}`, photo))); setPhotos(compressed); };
   const analyze = async () => {
     if (!photos.length) return setToast("사진을 한 장 이상 등록해 주세요.");
-    const identified = await identifier.identify(photos, demoMode);
-    const contextSpecies = demoMode === "base" && selectedSpecies ? baseSpecies.find(species => species.id === selectedSpecies) : undefined;
+    const contextSpecies = selectedSpecies ? baseSpecies.find(species => species.id === selectedSpecies) : undefined;
+    const identified = await identifier.identify(photos, contextSpecies ? "base" : demoMode);
     if (contextSpecies && identified.resultType === "BASE_SPECIES") {
       const contextCandidate = { speciesId: contextSpecies.id, name: contextSpecies.koreanName, group: contextSpecies.group, confidenceLevel: "가능성 높음" as const, traits: [contextSpecies.appearanceTraits, contextSpecies.habitat], score: 3 };
       const otherCandidates = identified.candidates.filter(candidate => candidate.speciesId !== contextSpecies.id).slice(0, 1);
@@ -78,7 +78,7 @@ export default function Home() {
     {!profile.isGuest && view === "home" && <WelcomeCard profile={profile} points={summary.points} onProfile={() => nav("profile")} />}
     {view === "home" && <Dashboard summary={summary} data={data} onNavigate={nav} onSelect={(id) => { setSelectedSpecies(id); setView("detail"); }} />}
     {view === "atlas" && <Atlas data={data} filter={filter} setFilter={setFilter} query={query} setQuery={setQuery} onSelect={(id) => { setSelectedSpecies(id); setView("detail"); }} />}
-    {view === "detail" && species && <SpeciesDetail species={species} data={data} onBack={() => nav("atlas")} onCapture={() => { setSelectedSpecies(species.id); setView("capture"); }} onRepresentative={(photo) => update(current => ({ ...current, atlas: current.atlas.map(entry => entry.speciesId === species.id ? { ...entry, representativePhoto: photo } : entry) }))} />}
+    {view === "detail" && species && <SpeciesDetail species={species} data={data} onBack={() => nav("atlas")} onCapture={() => { setSelectedSpecies(species.id); setDemoMode("base"); setView("capture"); }} onRepresentative={(photo) => update(current => ({ ...current, atlas: current.atlas.map(entry => entry.speciesId === species.id ? { ...entry, representativePhoto: photo } : entry) }))} />}
     {view === "capture" && <Capture photos={photos} files={files} receive={receivePhotos} analyze={analyze} setMode={setDemoMode} mode={demoMode} onCancel={() => nav("home")} />}
     {view === "result" && result && <ResultScreen result={result} selected={selectedSpecies} setSelected={setSelectedSpecies} setForm={setForm} form={form} onSave={saveObservation} onBack={() => { setResult(null); setView("capture"); }} />}
     {view === "personal" && <Personal data={data} onNavigate={nav} />}
