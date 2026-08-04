@@ -2,7 +2,7 @@ import { Species } from "@/src/types";
 
 const caution = "생물을 만지거나 이동시키지 말고, 원래 서식 환경을 훼손하지 않은 상태에서 사진으로만 관찰해 주세요.";
 
-type Seed = Omit<Species, "id" | "silhouetteImage" | "caution" | "isSensitiveSpecies">;
+type Seed = Omit<Species, "id" | "silhouetteImage" | "caution" | "isSensitiveSpecies" | "isRareSpecies">;
 
 const species: Seed[] = [
   { koreanName: "칠게", scientificName: "Helice tridens", group: "게류", shortDescription: "갯벌 표면과 굴 주변에서 관찰되는 작은 게입니다.", habitat: "펄갯벌과 갯골 주변", preferredSubstrate: "펄갯벌", bestObservationTime: "썰물 전후", bestSeason: "봄~가을", appearanceTraits: "짙은 갈색의 납작한 등딱지와 옆으로 움직이는 다리", ecologicalRole: "갯벌 표층의 유기물을 먹고 굴을 만들어 토양을 뒤섞습니다.", observationTips: "굴과 몸 전체가 함께 나오도록 낮은 각도에서 촬영해 보세요.", discoveryDifficulty: "쉬움", broadObservationAreas: ["펄갯벌", "갯골 주변"], featureQuestions: [{ id: "claw", question: "두 집게발의 크기가 비슷해 보이나요?", yesHint: "칠게와 농게를 비교하는 데 도움이 됩니다." }, { id: "burrow", question: "갯벌의 작은 굴 주변에 있었나요?", yesHint: "서식 환경을 함께 기록해 주세요." }] },
@@ -24,4 +24,5 @@ export const baseSpecies: Species[] = species.map((item, index) => ({
   silhouetteImage: "◌",
   caution,
   isSensitiveSpecies: item.koreanName === "흰물떼새",
+  isRareSpecies: item.koreanName === "흰물떼새",
 }));

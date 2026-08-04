@@ -9,7 +9,7 @@ export interface Species {
   habitat: string; preferredSubstrate: string; bestObservationTime: string; bestSeason: string;
   appearanceTraits: string; ecologicalRole: string; observationTips: string; caution: string;
   discoveryDifficulty: "쉬움" | "보통" | "도전"; silhouetteImage: string; isSensitiveSpecies: boolean;
-  broadObservationAreas: string[]; featureQuestions: FeatureQuestion[];
+  isRareSpecies: boolean; broadObservationAreas: string[]; featureQuestions: FeatureQuestion[];
 }
 export interface Observation {
   id: string; userId: string; speciesId?: string; temporaryName?: string; category: Category;
