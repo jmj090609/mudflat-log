@@ -46,7 +46,17 @@ export default function Home() {
   const update = (mutate: (current: AppData) => AppData) => setData(current => current ? mutate(current) : current);
   const clearCapture = () => { setPhotos([]); setFiles([]); setResult(null); setSelectedSpecies(null); setForm({ location: "부산 갯벌 탐방 구역", habitat: "펄과 모래가 섞인 갯벌", notes: "", temporaryName: "", mergeId: "" }); };
   const receivePhotos = async (event: ChangeEvent<HTMLInputElement>) => { if (!profile) return; const chosen = Array.from(event.target.files ?? []).slice(0, 3); setFiles(chosen); const compressed = await Promise.all(chosen.map(compressImage)); await Promise.allSettled(compressed.map((photo, index) => cachePhoto(`${profile.id}-${Date.now()}-${index}`, photo))); setPhotos(compressed); };
-  const analyze = async () => { if (!photos.length) return setToast("사진을 한 장 이상 등록해 주세요."); setResult(await identifier.identify(photos, demoMode)); setView("result"); };
+  const analyze = async () => {
+    if (!photos.length) return setToast("사진을 한 장 이상 등록해 주세요.");
+    const identified = await identifier.identify(photos, demoMode);
+    const contextSpecies = demoMode === "base" && selectedSpecies ? baseSpecies.find(species => species.id === selectedSpecies) : undefined;
+    if (contextSpecies && identified.resultType === "BASE_SPECIES") {
+      const contextCandidate = { speciesId: contextSpecies.id, name: contextSpecies.koreanName, group: contextSpecies.group, confidenceLevel: "가능성 높음" as const, traits: [contextSpecies.appearanceTraits, contextSpecies.habitat], score: 3 };
+      const otherCandidates = identified.candidates.filter(candidate => candidate.speciesId !== contextSpecies.id).slice(0, 1);
+      setResult({ ...identified, candidates: [contextCandidate, ...otherCandidates], detectedGroup: contextSpecies.group, confidenceLevel: "가능성 높음", reason: `${contextSpecies.koreanName} 도감에서 시작한 관찰이에요. 사진과 선택한 도감 생물의 특징을 먼저 비교해 보세요.`, suggestedQuestions: contextSpecies.featureQuestions });
+    } else setResult(identified);
+    setView("result");
+  };
   const saveObservation = (category: Category, speciesId?: string) => {
     if (!data || !profile) return; const now = new Date().toISOString(); const existing = category === "BASE" ? data.atlas.find(item => item.speciesId === speciesId) : undefined;
     const observation: Observation = { id: newId(), userId: profile.id, speciesId, temporaryName: category === "PERSONAL" ? (form.temporaryName || `${result?.detectedGroup ?? "이름을 확인 중인"} 생물`) : undefined, category, photos, observedAt: now, approximateLocation: form.location || "위치 저장 안 함", habitatType: form.habitat, notes: form.notes, identificationStatus: category === "UNIDENTIFIED" ? "UNIDENTIFIED" : category === "BASE" ? "CONFIRMED" : "REVIEWING", identificationSource: "데모 판별 및 사용자 확인", createdAt: now, updatedAt: now, detectedGroup: result?.detectedGroup, reason: result?.reason };
