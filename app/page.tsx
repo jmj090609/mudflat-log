@@ -85,13 +85,14 @@ export default function Home() {
     });
     setToast("사진을 도감에서 삭제했어요.");
   };
-  const chooseDetailPhotos = async (event: ChangeEvent<HTMLInputElement>) => {
+  const chooseDetailPhotos = async (event: ChangeEvent<HTMLInputElement>, speciesId?: string) => {
     if (!profile) return;
     const chosen = Array.from(event.target.files ?? []).slice(0, 3);
     if (!chosen.length) return;
     const compressed = await Promise.all(chosen.map(compressImage));
     await Promise.allSettled(compressed.map((photo, index) => cachePhoto(`${profile.id}-pending-${Date.now()}-${index}`, photo)));
     setDetailPhotos(compressed);
+    if (speciesId) saveObservation("BASE", speciesId, compressed);
     event.target.value = "";
   };
   const analyze = async () => {
@@ -112,7 +113,7 @@ export default function Home() {
     const earnedPoints = !existing && foundSpecies ? (foundSpecies.isRareSpecies ? 300 : 100) : 0;
     update(current => ({ ...current, observations: [observation, ...current.observations], atlas: category === "BASE" ? existing ? current.atlas.map(item => item.speciesId === speciesId ? { ...item, representativePhoto: item.representativePhoto ?? observationPhotos[0], lastObservedAt: now, observationCount: item.observationCount + 1 } : item) : [...current.atlas, { userId: profile.id, speciesId: speciesId!, discovered: true, representativePhoto: observationPhotos[0], firstObservedAt: now, lastObservedAt: now, observationCount: 1 }] : current.atlas }));
     if (earnedPoints) setToast(`${foundSpecies!.isRareSpecies ? "희귀 관찰종" : "기본종"} 발견! ${earnedPoints} 포인트를 받았어요.`);
-    setToast(category === "BASE" && !existing ? "기본 도감의 새로운 생물을 발견했어요!" : category === "UNIDENTIFIED" ? "미확인 생물함에 안전하게 저장했어요." : "나의 발견 도감에 기록했어요."); clearCapture(); setView(category === "UNIDENTIFIED" ? "unknown" : category === "PERSONAL" ? "personal" : "atlas");
+    setToast(category === "BASE" && !existing ? `${foundSpecies?.isRareSpecies ? "희귀 관찰종" : "기본종"} 발견! ${earnedPoints} 포인트를 받았어요.` : category === "UNIDENTIFIED" ? "미확인 생물함에 안전하게 저장했어요." : "나의 발견 도감에 기록했어요."); clearCapture(); setView(category === "UNIDENTIFIED" ? "unknown" : category === "PERSONAL" ? "personal" : "atlas");
   };
   const nav = (next: View) => { clearCapture(); setView(next); };
   if (!profile || !data) return <AuthScreen view={view} setView={setView} guest={guest} enter={enter} />;
@@ -124,7 +125,7 @@ export default function Home() {
     {!profile.isGuest && view === "home" && <WelcomeCard profile={profile} points={summary.points} onProfile={() => nav("profile")} />}
     {view === "home" && <Dashboard summary={summary} data={data} onNavigate={nav} onSelect={(id) => { setSelectedSpecies(id); setView("detail"); }} />}
     {view === "atlas" && <Atlas data={data} filter={filter} setFilter={setFilter} query={query} setQuery={setQuery} onSelect={(id) => { setSelectedSpecies(id); setView("detail"); }} />}
-    {view === "detail" && species && <SpeciesDetail species={species} data={data} onBack={() => nav("atlas")} onDiscover={() => saveObservation("BASE", species.id, detailPhotos)} onAddExternal={() => saveObservation("PERSONAL", undefined, detailPhotos, `${species.group} 외 생물`)} pendingPhotos={detailPhotos} onChoosePhotos={chooseDetailPhotos} onAddPhotos={(event) => addPhotosToSpecies(species.id, event)} onRepresentative={(photo) => update(current => ({ ...current, atlas: current.atlas.map(entry => entry.speciesId === species.id ? { ...entry, representativePhoto: photo } : entry) }))} onDeletePhoto={(photo) => removePhotoFromSpecies(species.id, photo)} />}
+    {view === "detail" && species && <SpeciesDetail species={species} data={data} onBack={() => nav("atlas")} onDiscover={() => saveObservation("BASE", species.id, detailPhotos)} onAddExternal={() => saveObservation("PERSONAL", undefined, detailPhotos, `${species.group} 외 생물`)} pendingPhotos={detailPhotos} onChoosePhotos={(event) => chooseDetailPhotos(event, species.id)} onAddPhotos={(event) => addPhotosToSpecies(species.id, event)} onRepresentative={(photo) => update(current => ({ ...current, atlas: current.atlas.map(entry => entry.speciesId === species.id ? { ...entry, representativePhoto: photo } : entry) }))} onDeletePhoto={(photo) => removePhotoFromSpecies(species.id, photo)} />}
     {view === "capture" && <Capture photos={photos} files={files} receive={receivePhotos} analyze={analyze} setMode={setDemoMode} mode={demoMode} onCancel={() => nav("home")} />}
     {view === "result" && result && <ResultScreen result={result} selected={selectedSpecies} setSelected={setSelectedSpecies} setForm={setForm} form={form} onSave={saveObservation} onBack={() => { setResult(null); setView("capture"); }} />}
     {view === "personal" && <Personal data={data} onNavigate={nav} onSelect={(id) => { setSelectedSpecies(id); setView("detail"); }} />}
