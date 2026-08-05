@@ -10,6 +10,7 @@ export type CommunitySession = { uid: string; idToken: string; email: string };
 export type CommunityProfile = { uid: string; nickname: string; avatar: string; intro: string; email: string };
 export type CommunityPost = { id: string; authorId: string; authorName: string; authorAvatar: string; title: string; body: string; photo?: string; createdAt: string };
 export type CommunityComment = { id: string; authorId: string; authorName: string; authorAvatar: string; body: string; createdAt: string };
+export type CommunityMember = { uid: string; nickname: string; avatar: string; email: string };
 
 const fieldValue = (value: string) => ({ stringValue: value });
 const fields = (data: Record<string, string>) => Object.fromEntries(Object.entries(data).map(([key, value]) => [key, fieldValue(value)]));
@@ -69,4 +70,14 @@ export async function listCommunityComments(session: CommunitySession, postId: s
 }
 export async function createCommunityComment(session: CommunitySession, postId: string, comment: Omit<CommunityComment, "id">) {
   await request(documentPath(`communityPosts/${postId}/comments`), { method: "POST", headers: headers(session), body: JSON.stringify({ fields: fields(comment) }) });
+}
+export async function deleteCommunityComment(session: CommunitySession, postId: string, commentId: string) {
+  await request(documentPath(`communityPosts/${postId}/comments/${commentId}`), { method: "DELETE", headers: headers(session) });
+}
+export async function listCommunityMembers(session: CommunitySession): Promise<CommunityMember[]> {
+  const payload = await request(`${documentPath("users")}?pageSize=100`, { headers: headers(session) });
+  return (payload.documents ?? []).map((doc: { name: string; fields?: Record<string, { stringValue?: string }> }) => { const f = doc.fields ?? {}; return { uid: value(f.uid) || doc.name.split("/").pop() || "", nickname: value(f.nickname), avatar: value(f.avatar), email: value(f.email) }; });
+}
+export async function banCommunityMember(session: CommunitySession, member: CommunityMember) {
+  await request(documentPath(`bannedUsers/${member.uid}`), { method: "PATCH", headers: headers(session), body: JSON.stringify({ fields: fields({ uid: member.uid, email: member.email, nickname: member.nickname, bannedAt: new Date().toISOString() }) }) });
 }
