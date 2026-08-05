@@ -66,6 +66,16 @@ export default function Home() {
     event.target.value = "";
     setToast("사진을 도감에 추가했어요.");
   };
+  const replacePhotosToSpecies = async (speciesId: string, event: ChangeEvent<HTMLInputElement>) => {
+    if (!profile) return;
+    const chosen = Array.from(event.target.files ?? []).slice(0, 3);
+    if (!chosen.length) return;
+    const compressed = await Promise.all(chosen.map(compressImage));
+    await Promise.allSettled(compressed.map((photo, index) => cachePhoto(`${profile.id}-${speciesId}-replace-${Date.now()}-${index}`, photo)));
+    update(current => ({ ...current, observations: current.observations.map(observation => observation.speciesId === speciesId ? { ...observation, photos: compressed, updatedAt: new Date().toISOString() } : observation), atlas: current.atlas.map(entry => entry.speciesId === speciesId ? { ...entry, representativePhoto: compressed[0] } : entry) }));
+    event.target.value = "";
+    setToast("사진을 변경했어요.");
+  };
   const removePhotoFromSpecies = (speciesId: string, photo: string) => {
     if (!confirm("이 사진을 도감에서 삭제할까요?")) return;
     update(current => {
