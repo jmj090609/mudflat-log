@@ -139,7 +139,7 @@ export default function Home() {
     const firstPersonalRegistration = category === "PERSONAL" && !data.observations.some(item => item.category === "PERSONAL" && (item.temporaryName || item.detectedGroup) === personalKey);
     const earnedPoints = firstPersonalRegistration ? 150 : firstBaseRegistration ? (foundSpecies!.isRareSpecies ? 300 : 100) : 0;
     update(current => {
-      if (category === "PERSONAL" && personalExists) {
+      if (category === "PERSONAL" && !firstPersonalRegistration) {
         const matching = current.observations.filter(item => item.category === "PERSONAL" && (item.temporaryName || item.detectedGroup) === personalKey);
         const first = matching[0];
         const mergedPhotos = [...new Set(matching.flatMap(item => item.photos).concat(observationPhotos))];
