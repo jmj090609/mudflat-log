@@ -8,7 +8,7 @@ const firestoreBase = `https://firestore.googleapis.com/v1/projects/${config.pro
 
 export type CommunitySession = { uid: string; idToken: string; email: string };
 export type CommunityProfile = { uid: string; nickname: string; avatar: string; intro: string; email: string };
-export type CommunityPost = { id: string; authorId: string; authorName: string; authorAvatar: string; title: string; body: string; createdAt: string };
+export type CommunityPost = { id: string; authorId: string; authorName: string; authorAvatar: string; title: string; body: string; photo?: string; createdAt: string };
 export type CommunityComment = { id: string; authorId: string; authorName: string; authorAvatar: string; body: string; createdAt: string };
 
 const fieldValue = (value: string) => ({ stringValue: value });
@@ -43,7 +43,7 @@ export async function getCommunityProfile(session: CommunitySession, uid: string
 
 const parsePost = (doc: { name: string; fields?: Record<string, { stringValue?: string }> }): CommunityPost => {
   const f = doc.fields ?? {}, id = doc.name.split("/").pop() ?? "";
-  return { id, authorId: value(f.authorId), authorName: value(f.authorName), authorAvatar: value(f.authorAvatar), title: value(f.title), body: value(f.body), createdAt: value(f.createdAt) };
+  return { id, authorId: value(f.authorId), authorName: value(f.authorName), authorAvatar: value(f.authorAvatar), title: value(f.title), body: value(f.body), photo: value(f.photo) || undefined, createdAt: value(f.createdAt) };
 };
 const parseComment = (doc: { name: string; fields?: Record<string, { stringValue?: string }> }): CommunityComment => {
   const f = doc.fields ?? {}, id = doc.name.split("/").pop() ?? "";
@@ -55,7 +55,13 @@ export async function listCommunityPosts(session: CommunitySession) {
   return (payload.documents ?? []).map(parsePost) as CommunityPost[];
 }
 export async function createCommunityPost(session: CommunitySession, post: Omit<CommunityPost, "id">) {
-  await request(documentPath("communityPosts"), { method: "POST", headers: headers(session), body: JSON.stringify({ fields: fields(post) }) });
+  await request(documentPath("communityPosts"), { method: "POST", headers: headers(session), body: JSON.stringify({ fields: fields({ authorId: post.authorId, authorName: post.authorName, authorAvatar: post.authorAvatar, title: post.title, body: post.body, photo: post.photo ?? "", createdAt: post.createdAt }) }) });
+}
+export async function updateCommunityPost(session: CommunitySession, post: CommunityPost) {
+  await request(documentPath(`communityPosts/${post.id}`), { method: "PATCH", headers: headers(session), body: JSON.stringify({ fields: fields({ authorId: post.authorId, authorName: post.authorName, authorAvatar: post.authorAvatar, title: post.title, body: post.body, photo: post.photo ?? "", createdAt: post.createdAt }) }) });
+}
+export async function deleteCommunityPost(session: CommunitySession, postId: string) {
+  await request(documentPath(`communityPosts/${postId}`), { method: "DELETE", headers: headers(session) });
 }
 export async function listCommunityComments(session: CommunitySession, postId: string) {
   const payload = await request(`${documentPath(`communityPosts/${postId}/comments`)}?pageSize=50&orderBy=createdAt%20asc`, { headers: headers(session) });
