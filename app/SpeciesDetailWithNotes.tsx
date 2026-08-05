@@ -1,7 +1,8 @@
 "use client";
 
-import { ChangeEvent, useState } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
 import { AppData, Species } from "@/src/types";
+import { getCatalogOverride } from "@/src/lib/firebase/catalog";
 
 type Props = {
   species: Species;
@@ -17,11 +18,13 @@ type Props = {
 
 export default function SpeciesDetailWithNotes({ species, data, pendingPhotos, onBack, onDiscover, onChoosePhotos, onAddPhotos, onRepresentative, onDeletePhoto }: Props) {
   const [note, setNote] = useState("");
+  const [adminDescription, setAdminDescription] = useState("");
   const entry = data.atlas.find(item => item.speciesId === species.id);
   const observations = data.observations.filter(item => item.speciesId === species.id);
   const photos = [...new Set(observations.flatMap(item => item.photos))];
   const notes = [...new Set(observations.map(item => item.notes.trim()).filter(Boolean))];
   const inputId = `observation-photo-${species.id}`;
+  useEffect(() => { getCatalogOverride(species.id).then(override => setAdminDescription(override?.description ?? "")); }, [species.id]);
   const addPhoto = async (event: ChangeEvent<HTMLInputElement>) => {
     if (entry) await onAddPhotos(event, note);
     else await onChoosePhotos(event, note);
@@ -32,7 +35,7 @@ export default function SpeciesDetailWithNotes({ species, data, pendingPhotos, o
     <button className="back" onClick={onBack}>← 기본 도감으로</button>
     <div className="detail-image">{entry?.representativePhoto ? <img src={entry.representativePhoto} alt={`${species.koreanName} 대표 사진`} /> : pendingPhotos[0] ? <img src={pendingPhotos[0]} alt={`${species.koreanName} 선택 사진`} /> : <span className="silhouette large">◌</span>}</div>
     <span className="badge">{species.group} · {species.discoveryDifficulty}</span><h1>{species.koreanName}</h1><i>{species.scientificName}</i>
-    <details open><summary>특징</summary><p>{species.appearanceTraits}</p><p><b>서식 환경:</b> {species.habitat}</p></details>
+    <details open><summary>특징</summary><p>{adminDescription || species.appearanceTraits}</p><p><b>서식 환경:</b> {species.habitat}</p></details>
     <section className="photo-manager"><div className="section-heading"><h2>사진 관리</h2><span>{photos.length}장</span></div>
       <label className="observation-note-field">이번 관찰 메모<textarea value={note} onChange={event => setNote(event.target.value)} placeholder="사진을 찍은 날의 특징, 크기, 움직임, 날씨 등을 남겨 주세요." /></label>
       <input className="species-photo-input" id={inputId} type="file" accept="image/*" multiple onChange={addPhoto} />
