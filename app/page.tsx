@@ -56,7 +56,7 @@ export default function Home() {
   const [demoMode, setDemoMode] = useState<"base" | "external" | "unidentified">("base");
   const [filter, setFilter] = useState("전체");
   const [query, setQuery] = useState("");
-  const [form, setForm] = useState({ location: "부산 갯벌 탐방 구역", habitat: "펄과 모래가 섞인 갯벌", notes: "", temporaryName: "", mergeId: "" });
+  const [form, setForm] = useState({ location: "전국 갯벌 탐방 지역", habitat: "펄과 모래가 섞인 갯벌", notes: "", temporaryName: "", mergeId: "" });
 
   // A public shared device must never restore a previous visitor automatically.
   // Observation data remains saved per account, but entering it always requires login.
@@ -72,7 +72,7 @@ export default function Home() {
   const enter = (next: UserProfile) => { localStorage.setItem(authKey, JSON.stringify(next)); setProfile(next); setData(normalizeData(loadData(next))); setView("home"); };
   const guest = () => enter({ id: guestId, nickname: "체험 탐방자", isGuest: true, joinedAt: new Date().toISOString() });
   const update = (mutate: (current: AppData) => AppData) => setData(current => current ? mutate(current) : current);
-  const clearCapture = () => { setPhotos([]); setFiles([]); setResult(null); setSelectedSpecies(null); setDetailPhotos([]); setExternalEntryGroup(null); setForm({ location: "부산 갯벌 탐방 구역", habitat: "펄과 모래가 섞인 갯벌", notes: "", temporaryName: "", mergeId: "" }); };
+  const clearCapture = () => { setPhotos([]); setFiles([]); setResult(null); setSelectedSpecies(null); setDetailPhotos([]); setExternalEntryGroup(null); setForm({ location: "전국 갯벌 탐방 지역", habitat: "펄과 모래가 섞인 갯벌", notes: "", temporaryName: "", mergeId: "" }); };
   const receivePhotos = async (event: ChangeEvent<HTMLInputElement>) => { if (!profile) return; const chosen = Array.from(event.target.files ?? []).slice(0, 3); setFiles(chosen); const compressed = await Promise.all(chosen.map(compressImage)); await Promise.allSettled(compressed.map((photo, index) => cachePhoto(`${profile.id}-${Date.now()}-${index}`, photo))); setPhotos(compressed); };
   const addPhotosToSpecies = async (speciesId: string, event: ChangeEvent<HTMLInputElement>, note = "") => {
     if (!profile) return;
@@ -184,7 +184,8 @@ export default function Home() {
 
 function AuthScreen({ view, setView, guest, enter }: { view: View; setView: (v: View) => void; guest: () => void; enter: (p: UserProfile) => void }) {
  const [email, setEmail] = useState(""), [password, setPassword] = useState(""), [nickname, setNickname] = useState(""), [agreed, setAgreed] = useState(false), [error, setError] = useState("");
- useEffect(() => { setEmail(""); setPassword(""); setNickname(""); setAgreed(false); setError(""); }, [view]);
+  useEffect(() => { setEmail(""); setPassword(""); setNickname(""); setAgreed(false); setError(""); }, [view]);
+  useEffect(() => { if (view === "login") document.querySelector(".auth h1")?.replaceChildren("환영합니다"); }, [view, email, password]);
  const login = () => { const normalizedEmail = email.trim().toLowerCase(); const accounts = loadAccounts(); const account = accounts.find(item => item.email === normalizedEmail && item.password === password); if (account) { const { password: _password, ...profile } = account; return enter(profile); } const legacyRaw = localStorage.getItem(`mudflat-log:data:user-${normalizedEmail}`); if (legacyRaw) { try { const legacyProfile = (JSON.parse(legacyRaw) as AppData).profile; const migrated: StoredAccount = { ...legacyProfile, email: normalizedEmail, password, isGuest: false }; saveAccounts([...accounts, migrated]); const { password: _password, ...profile } = migrated; return enter(profile); } catch { /* fall through to the sign-in error */ } } return setError("이메일 또는 비밀번호를 확인해 주세요."); };
  const signup = () => { if (nickname.trim().length < 2) return setError("닉네임은 2자 이상 입력해 주세요."); if (/[가-힣ㄱ-ㅎㅏ-ㅣ]/.test(email)) return setError("아이디는 한글 없이 영문, 숫자, 기호로만 입력해 주세요."); if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email)) return setError("아이디는 영문 이메일 형식으로 입력해 주세요."); if (password.length < 8) return setError("비밀번호는 8자 이상이어야 합니다."); if (!agreed) return setError("이용약관과 개인정보 처리 안내에 동의해 주세요."); const normalizedEmail = email.trim().toLowerCase(); const accounts = loadAccounts(); if (accounts.some(account => account.email === normalizedEmail)) return setError("이미 가입된 이메일입니다. 로그인해 주세요."); const account: StoredAccount = { id: `user-${normalizedEmail}`, nickname: nickname.trim(), email: normalizedEmail, password, isGuest: false, joinedAt: new Date().toISOString() }; saveAccounts([...accounts, account]); const { password: _password, ...profile } = account; enter(profile); };
  const resetPassword = () => { const normalizedEmail = email.trim().toLowerCase(); const accounts = loadAccounts(); const account = accounts.find(item => item.email === normalizedEmail && item.nickname === nickname.trim()); if (!account) return setError("가입 이메일과 닉네임을 확인해 주세요."); if (password.length < 8) return setError("새 비밀번호는 8자 이상이어야 합니다."); saveAccounts(accounts.map(item => item.email === normalizedEmail ? { ...item, password } : item)); alert("비밀번호를 변경했습니다. 새 비밀번호로 로그인해 주세요."); setView("login"); };
