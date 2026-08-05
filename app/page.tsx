@@ -9,6 +9,7 @@ import { authKey, deleteData, guestId, loadData, saveData } from "@/src/lib/stor
 import { cachePhoto } from "@/src/lib/storage/photoStore";
 import { AppData, Category, IdentificationResult, Observation, UserProfile } from "@/src/types";
 import Community from "./Community";
+import SpeciesDetailWithNotes from "./SpeciesDetailWithNotes";
 
 type View = "welcome" | "login" | "signup" | "reset" | "home" | "atlas" | "capture" | "result" | "personal" | "unknown" | "profile" | "detail" | "community";
 const identifier = new MockSpeciesIdentifier();
@@ -73,7 +74,7 @@ export default function Home() {
   const update = (mutate: (current: AppData) => AppData) => setData(current => current ? mutate(current) : current);
   const clearCapture = () => { setPhotos([]); setFiles([]); setResult(null); setSelectedSpecies(null); setDetailPhotos([]); setExternalEntryGroup(null); setForm({ location: "부산 갯벌 탐방 구역", habitat: "펄과 모래가 섞인 갯벌", notes: "", temporaryName: "", mergeId: "" }); };
   const receivePhotos = async (event: ChangeEvent<HTMLInputElement>) => { if (!profile) return; const chosen = Array.from(event.target.files ?? []).slice(0, 3); setFiles(chosen); const compressed = await Promise.all(chosen.map(compressImage)); await Promise.allSettled(compressed.map((photo, index) => cachePhoto(`${profile.id}-${Date.now()}-${index}`, photo))); setPhotos(compressed); };
-  const addPhotosToSpecies = async (speciesId: string, event: ChangeEvent<HTMLInputElement>) => {
+  const addPhotosToSpecies = async (speciesId: string, event: ChangeEvent<HTMLInputElement>, note = "") => {
     if (!profile) return;
     const chosen = Array.from(event.target.files ?? []).slice(0, 3);
     if (!chosen.length) return;
@@ -83,7 +84,8 @@ export default function Home() {
       const matching = current.observations.filter(item => item.speciesId === speciesId);
       const first = matching[0];
       const mergedPhotos = [...new Set((matching.flatMap(item => item.photos)).concat(compressed))];
-      const observations = first ? [{ ...first, photos: mergedPhotos, updatedAt: new Date().toISOString() }, ...current.observations.filter(item => item.speciesId !== speciesId)] : current.observations;
+      const savedNote = note.trim() ? [first?.notes, note.trim()].filter(Boolean).join("\n\n") : first?.notes;
+      const observations = first ? [{ ...first, photos: mergedPhotos, notes: savedNote, updatedAt: new Date().toISOString() }, ...current.observations.filter(item => item.speciesId !== speciesId)] : current.observations;
       return { ...current, observations, atlas: current.atlas.map(entry => entry.speciesId === speciesId ? { ...entry, representativePhoto: entry.representativePhoto ?? compressed[0] } : entry) };
     });
     event.target.value = "";
@@ -108,14 +110,14 @@ export default function Home() {
     });
     setToast("사진을 도감에서 삭제했어요.");
   };
-  const chooseDetailPhotos = async (event: ChangeEvent<HTMLInputElement>, speciesId?: string) => {
+  const chooseDetailPhotos = async (event: ChangeEvent<HTMLInputElement>, speciesId?: string, note = "") => {
     if (!profile) return;
     const chosen = Array.from(event.target.files ?? []).slice(0, 3);
     if (!chosen.length) return;
     const compressed = await Promise.all(chosen.map(compressImage));
     await Promise.allSettled(compressed.map((photo, index) => cachePhoto(`${profile.id}-pending-${Date.now()}-${index}`, photo)));
     setDetailPhotos(compressed);
-    if (speciesId) saveObservation("BASE", speciesId, compressed);
+    if (speciesId) saveObservation("BASE", speciesId, compressed, undefined, note);
     event.target.value = "";
   };
   const analyze = async () => {
@@ -129,9 +131,9 @@ export default function Home() {
     } else setResult(identified);
     setView("result");
   };
-  const saveObservation = (category: Category, speciesId?: string, observationPhotos = photos, temporaryNameOverride?: string) => {
+  const saveObservation = (category: Category, speciesId?: string, observationPhotos = photos, temporaryNameOverride?: string, notesOverride?: string) => {
     if (!data || !profile) return; const now = new Date().toISOString(); const existing = category === "BASE" ? data.atlas.find(item => item.speciesId === speciesId) : undefined;
-    const observation: Observation = { id: newId(), userId: profile.id, speciesId, temporaryName: category === "PERSONAL" ? (temporaryNameOverride || form.temporaryName || `${result?.detectedGroup ?? "이름을 확인 중인"} 생물`) : undefined, category, photos: observationPhotos, observedAt: now, approximateLocation: form.location || "위치 저장 안 함", habitatType: form.habitat, notes: form.notes, identificationStatus: category === "UNIDENTIFIED" ? "UNIDENTIFIED" : category === "BASE" ? "CONFIRMED" : "REVIEWING", identificationSource: "데모 판별 및 사용자 확인", createdAt: now, updatedAt: now, detectedGroup: result?.detectedGroup, reason: result?.reason };
+    const observation: Observation = { id: newId(), userId: profile.id, speciesId, temporaryName: category === "PERSONAL" ? (temporaryNameOverride || form.temporaryName || `${result?.detectedGroup ?? "이름을 확인 중인"} 생물`) : undefined, category, photos: observationPhotos, observedAt: now, approximateLocation: form.location || "위치 저장 안 함", habitatType: form.habitat, notes: notesOverride ?? form.notes, identificationStatus: category === "UNIDENTIFIED" ? "UNIDENTIFIED" : category === "BASE" ? "CONFIRMED" : "REVIEWING", identificationSource: "데모 판별 및 사용자 확인", createdAt: now, updatedAt: now, detectedGroup: result?.detectedGroup, reason: result?.reason };
     const foundSpecies = category === "BASE" ? baseSpecies.find(item => item.id === speciesId) : undefined;
     const personalKey = temporaryNameOverride || form.temporaryName || `${result?.detectedGroup ?? "이름을 확인 중인"} 생물`;
     const firstBaseRegistration = category === "BASE" && !existing && Boolean(foundSpecies);
@@ -149,7 +151,8 @@ export default function Home() {
         const matching = current.observations.filter(item => item.speciesId === speciesId);
         const first = matching[0];
         const mergedPhotos = [...new Set(matching.flatMap(item => item.photos).concat(observationPhotos))];
-        const observations = first ? [{ ...first, photos: mergedPhotos, updatedAt: now }, ...current.observations.filter(item => item.speciesId !== speciesId)] : current.observations;
+        const savedNote = notesOverride?.trim() ? [first?.notes, notesOverride.trim()].filter(Boolean).join("\n\n") : first?.notes;
+        const observations = first ? [{ ...first, photos: mergedPhotos, notes: savedNote, updatedAt: now }, ...current.observations.filter(item => item.speciesId !== speciesId)] : current.observations;
         return { ...current, observations, atlas: current.atlas.map(item => item.speciesId === speciesId ? { ...item, representativePhoto: item.representativePhoto ?? observationPhotos[0], lastObservedAt: now } : item) };
       }
       return { ...current, observations: [observation, ...current.observations], atlas: category === "BASE" ? [...current.atlas, { userId: profile.id, speciesId: speciesId!, discovered: true, representativePhoto: observationPhotos[0], firstObservedAt: now, lastObservedAt: now, observationCount: 1 }] : current.atlas };
@@ -167,7 +170,7 @@ export default function Home() {
     {!profile.isGuest && view === "home" && <WelcomeCard profile={profile} points={summary.points} onProfile={() => nav("profile")} />}
     {view === "home" && <Dashboard summary={summary} data={data} onNavigate={nav} onSelect={(id) => { setSelectedSpecies(id); setView("detail"); }} />}
     {view === "atlas" && <Atlas data={data} filter={filter} setFilter={setFilter} query={query} setQuery={setQuery} onSelect={(id) => { setSelectedSpecies(id); setView("detail"); }} onAddExternal={(group) => { setExternalEntryGroup(group); setForm(current => ({ ...current, temporaryName: "" })); setView("capture"); }} onAddUnknown={() => { setDemoMode("unidentified"); setView("capture"); }} />}
-    {view === "detail" && species && <SpeciesDetail species={species} data={data} onBack={() => nav("atlas")} onDiscover={() => saveObservation("BASE", species.id, detailPhotos)} onAddExternal={() => saveObservation("PERSONAL", undefined, detailPhotos, `${species.group} 외 생물`)} pendingPhotos={detailPhotos} onChoosePhotos={(event) => chooseDetailPhotos(event, species.id)} onAddPhotos={(event) => addPhotosToSpecies(species.id, event)} onRepresentative={(photo) => update(current => ({ ...current, atlas: current.atlas.map(entry => entry.speciesId === species.id ? { ...entry, representativePhoto: photo } : entry) }))} onDeletePhoto={(photo) => removePhotoFromSpecies(species.id, photo)} />}
+    {view === "detail" && species && <SpeciesDetailWithNotes species={species} data={data} onBack={() => nav("atlas")} onDiscover={() => saveObservation("BASE", species.id, detailPhotos)} pendingPhotos={detailPhotos} onChoosePhotos={(event, note) => chooseDetailPhotos(event, species.id, note)} onAddPhotos={(event, note) => addPhotosToSpecies(species.id, event, note)} onRepresentative={(photo) => update(current => ({ ...current, atlas: current.atlas.map(entry => entry.speciesId === species.id ? { ...entry, representativePhoto: photo } : entry) }))} onDeletePhoto={(photo) => removePhotoFromSpecies(species.id, photo)} />}
     {view === "capture" && <Capture photos={photos} files={files} receive={receivePhotos} analyze={analyze} setMode={setDemoMode} mode={demoMode} externalGroup={externalEntryGroup} externalName={form.temporaryName} setExternalName={(name) => setForm(current => ({ ...current, temporaryName: name }))} onSaveExternal={(name) => saveObservation("PERSONAL", undefined, photos, name.trim() || (externalEntryGroup ? `도감 외 ${externalEntryGroup}` : undefined))} onCancel={() => nav("home")} />}
     {view === "result" && result && <ResultScreen result={result} selected={selectedSpecies} setSelected={setSelectedSpecies} setForm={setForm} form={form} onSave={saveObservation} onBack={() => { setResult(null); setView("capture"); }} />}
     {view === "personal" && <Personal data={data} onNavigate={nav} onSelect={(id) => { setSelectedSpecies(id); setView("detail"); }} onViewPhoto={setViewerPhoto} onDeletePhoto={(observationId, photo) => { if (confirm("이 사진을 삭제할까요?")) update(current => ({ ...current, observations: current.observations.flatMap(item => { if (item.id !== observationId) return [item]; const photos = item.photos.filter(savedPhoto => savedPhoto !== photo); return photos.length ? [{ ...item, photos, updatedAt: new Date().toISOString() }] : []; }) })); }} />}
