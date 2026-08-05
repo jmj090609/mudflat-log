@@ -18,6 +18,16 @@ const loadAccounts = (): StoredAccount[] => {
   try { return JSON.parse(localStorage.getItem(accountStoreKey) ?? "[]") as StoredAccount[]; } catch { return []; }
 };
 const saveAccounts = (accounts: StoredAccount[]) => localStorage.setItem(accountStoreKey, JSON.stringify(accounts));
+const normalizeData = (raw: AppData): AppData => {
+  const base = new Map<string, Observation>();
+  const other: Observation[] = [];
+  raw.observations.forEach(item => {
+    if (item.category !== "BASE" || !item.speciesId) { other.push(item); return; }
+    const previous = base.get(item.speciesId);
+    base.set(item.speciesId, previous ? { ...previous, photos: [...new Set(previous.photos.concat(item.photos))], updatedAt: item.updatedAt } : item);
+  });
+  return { ...raw, observations: [...Array.from(base.values()), ...other] };
+};
 const notice = "생물을 만지거나 이동시키지 말고, 원래 서식 환경을 훼손하지 않은 상태에서 사진으로만 관찰해 주세요.";
 const fmt = (date?: string) => date ? new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric" }).format(new Date(date)) : "—";
 const newId = () => crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
@@ -51,7 +61,7 @@ export default function Home() {
     const points = atlas.filter(item => item.discovered).reduce((total, item) => total + (baseSpecies.find(species => species.id === item.speciesId)?.isRareSpecies ? 300 : 100), 0);
     return { discovered, personalCount: new Set(personal.map(item => item.speciesId ?? item.temporaryName)).size, unknown: obs.filter(item => item.category === "UNIDENTIFIED").length, observations: obs.length, percent: Math.round(discovered / baseSpecies.length * 100), points };
   }, [data]);
-  const enter = (next: UserProfile) => { localStorage.setItem(authKey, JSON.stringify(next)); setProfile(next); setData(loadData(next)); setView("home"); };
+  const enter = (next: UserProfile) => { localStorage.setItem(authKey, JSON.stringify(next)); setProfile(next); setData(normalizeData(loadData(next))); setView("home"); };
   const guest = () => enter({ id: guestId, nickname: "체험 탐방자", isGuest: true, joinedAt: new Date().toISOString() });
   const update = (mutate: (current: AppData) => AppData) => setData(current => current ? mutate(current) : current);
   const clearCapture = () => { setPhotos([]); setFiles([]); setResult(null); setSelectedSpecies(null); setDetailPhotos([]); setForm({ location: "부산 갯벌 탐방 구역", habitat: "펄과 모래가 섞인 갯벌", notes: "", temporaryName: "", mergeId: "" }); };
@@ -62,7 +72,13 @@ export default function Home() {
     if (!chosen.length) return;
     const compressed = await Promise.all(chosen.map(compressImage));
     await Promise.allSettled(compressed.map((photo, index) => cachePhoto(`${profile.id}-${speciesId}-${Date.now()}-${index}`, photo)));
-    update(current => ({ ...current, observations: current.observations.map(observation => observation.speciesId === speciesId ? { ...observation, photos: [...observation.photos, ...compressed], updatedAt: new Date().toISOString() } : observation), atlas: current.atlas.map(entry => entry.speciesId === speciesId ? { ...entry, representativePhoto: entry.representativePhoto ?? compressed[0] } : entry) }));
+    update(current => {
+      const matching = current.observations.filter(item => item.speciesId === speciesId);
+      const first = matching[0];
+      const mergedPhotos = [...new Set((matching.flatMap(item => item.photos)).concat(compressed))];
+      const observations = first ? [{ ...first, photos: mergedPhotos, updatedAt: new Date().toISOString() }, ...current.observations.filter(item => item.speciesId !== speciesId)] : current.observations;
+      return { ...current, observations, atlas: current.atlas.map(entry => entry.speciesId === speciesId ? { ...entry, representativePhoto: entry.representativePhoto ?? compressed[0] } : entry) };
+    });
     event.target.value = "";
     setToast("사진을 도감에 추가했어요.");
   };
@@ -111,7 +127,16 @@ export default function Home() {
     const observation: Observation = { id: newId(), userId: profile.id, speciesId, temporaryName: category === "PERSONAL" ? (temporaryNameOverride || form.temporaryName || `${result?.detectedGroup ?? "이름을 확인 중인"} 생물`) : undefined, category, photos: observationPhotos, observedAt: now, approximateLocation: form.location || "위치 저장 안 함", habitatType: form.habitat, notes: form.notes, identificationStatus: category === "UNIDENTIFIED" ? "UNIDENTIFIED" : category === "BASE" ? "CONFIRMED" : "REVIEWING", identificationSource: "데모 판별 및 사용자 확인", createdAt: now, updatedAt: now, detectedGroup: result?.detectedGroup, reason: result?.reason };
     const foundSpecies = category === "BASE" ? baseSpecies.find(item => item.id === speciesId) : undefined;
     const earnedPoints = !existing && foundSpecies ? (foundSpecies.isRareSpecies ? 300 : 100) : 0;
-    update(current => ({ ...current, observations: [observation, ...current.observations], atlas: category === "BASE" ? existing ? current.atlas.map(item => item.speciesId === speciesId ? { ...item, representativePhoto: item.representativePhoto ?? observationPhotos[0], lastObservedAt: now, observationCount: item.observationCount + 1 } : item) : [...current.atlas, { userId: profile.id, speciesId: speciesId!, discovered: true, representativePhoto: observationPhotos[0], firstObservedAt: now, lastObservedAt: now, observationCount: 1 }] : current.atlas }));
+    update(current => {
+      if (category === "BASE" && existing) {
+        const matching = current.observations.filter(item => item.speciesId === speciesId);
+        const first = matching[0];
+        const mergedPhotos = [...new Set(matching.flatMap(item => item.photos).concat(observationPhotos))];
+        const observations = first ? [{ ...first, photos: mergedPhotos, updatedAt: now }, ...current.observations.filter(item => item.speciesId !== speciesId)] : current.observations;
+        return { ...current, observations, atlas: current.atlas.map(item => item.speciesId === speciesId ? { ...item, representativePhoto: item.representativePhoto ?? observationPhotos[0], lastObservedAt: now } : item) };
+      }
+      return { ...current, observations: [observation, ...current.observations], atlas: category === "BASE" ? [...current.atlas, { userId: profile.id, speciesId: speciesId!, discovered: true, representativePhoto: observationPhotos[0], firstObservedAt: now, lastObservedAt: now, observationCount: 1 }] : current.atlas };
+    });
     if (earnedPoints) setToast(`${foundSpecies!.isRareSpecies ? "희귀 관찰종" : "기본종"} 발견! ${earnedPoints} 포인트를 받았어요.`);
     setToast(category === "BASE" && !existing ? `${foundSpecies?.isRareSpecies ? "희귀 관찰종" : "기본종"} 발견! ${earnedPoints} 포인트를 받았어요.` : category === "UNIDENTIFIED" ? "미확인 생물함에 안전하게 저장했어요." : "나의 발견 도감에 기록했어요."); clearCapture(); setView(category === "UNIDENTIFIED" ? "unknown" : category === "PERSONAL" ? "personal" : "atlas");
   };
