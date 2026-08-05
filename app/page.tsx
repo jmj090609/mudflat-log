@@ -58,7 +58,7 @@ export default function Home() {
     const atlas = data?.atlas ?? [], obs = data?.observations ?? [];
     const discovered = atlas.filter(item => item.discovered).length;
     const personal = obs.filter(item => item.category === "PERSONAL");
-    const points = atlas.filter(item => item.discovered).reduce((total, item) => total + (baseSpecies.find(species => species.id === item.speciesId)?.isRareSpecies ? 300 : 100), 0);
+    const points = atlas.filter(item => item.discovered).reduce((total, item) => total + (baseSpecies.find(species => species.id === item.speciesId)?.isRareSpecies ? 300 : 100), 0) + new Set(personal.map(item => item.speciesId ?? item.temporaryName)).size * 150;
     return { discovered, personalCount: new Set(personal.map(item => item.speciesId ?? item.temporaryName)).size, unknown: obs.filter(item => item.category === "UNIDENTIFIED").length, observations: obs.length, percent: Math.round(discovered / baseSpecies.length * 100), points };
   }, [data]);
   const enter = (next: UserProfile) => { localStorage.setItem(authKey, JSON.stringify(next)); setProfile(next); setData(normalizeData(loadData(next))); setView("home"); };
@@ -126,7 +126,9 @@ export default function Home() {
     if (!data || !profile) return; const now = new Date().toISOString(); const existing = category === "BASE" ? data.atlas.find(item => item.speciesId === speciesId) : undefined;
     const observation: Observation = { id: newId(), userId: profile.id, speciesId, temporaryName: category === "PERSONAL" ? (temporaryNameOverride || form.temporaryName || `${result?.detectedGroup ?? "이름을 확인 중인"} 생물`) : undefined, category, photos: observationPhotos, observedAt: now, approximateLocation: form.location || "위치 저장 안 함", habitatType: form.habitat, notes: form.notes, identificationStatus: category === "UNIDENTIFIED" ? "UNIDENTIFIED" : category === "BASE" ? "CONFIRMED" : "REVIEWING", identificationSource: "데모 판별 및 사용자 확인", createdAt: now, updatedAt: now, detectedGroup: result?.detectedGroup, reason: result?.reason };
     const foundSpecies = category === "BASE" ? baseSpecies.find(item => item.id === speciesId) : undefined;
-    const earnedPoints = !existing && foundSpecies ? (foundSpecies.isRareSpecies ? 300 : 100) : 0;
+    const personalKey = temporaryNameOverride || form.temporaryName || `${result?.detectedGroup ?? "이름을 확인 중인"} 생물`;
+    const personalExists = category === "PERSONAL" && data.observations.some(item => item.category === "PERSONAL" && (item.temporaryName || item.detectedGroup) === personalKey);
+    const earnedPoints = category === "PERSONAL" ? (personalExists ? 0 : 150) : !existing && foundSpecies ? (foundSpecies.isRareSpecies ? 300 : 100) : 0;
     update(current => {
       if (category === "BASE" && existing) {
         const matching = current.observations.filter(item => item.speciesId === speciesId);
@@ -137,8 +139,8 @@ export default function Home() {
       }
       return { ...current, observations: [observation, ...current.observations], atlas: category === "BASE" ? [...current.atlas, { userId: profile.id, speciesId: speciesId!, discovered: true, representativePhoto: observationPhotos[0], firstObservedAt: now, lastObservedAt: now, observationCount: 1 }] : current.atlas };
     });
-    if (earnedPoints) setToast(`${foundSpecies!.isRareSpecies ? "희귀 관찰종" : "기본종"} 발견! ${earnedPoints} 포인트를 받았어요.`);
-    setToast(category === "BASE" && !existing ? `${foundSpecies?.isRareSpecies ? "희귀 관찰종" : "기본종"} 발견! ${earnedPoints} 포인트를 받았어요.` : category === "UNIDENTIFIED" ? "미확인 생물함에 안전하게 저장했어요." : "나의 발견 도감에 기록했어요."); clearCapture(); setView(category === "UNIDENTIFIED" ? "unknown" : category === "PERSONAL" ? "personal" : "atlas");
+    if (earnedPoints && category === "BASE") setToast(`${foundSpecies!.isRareSpecies ? "희귀 관찰종" : "기본종"} 발견! ${earnedPoints} 포인트를 받았어요.`);
+    setToast(category === "BASE" && !existing ? `${foundSpecies?.isRareSpecies ? "희귀 관찰종" : "기본종"} 발견! ${earnedPoints} 포인트를 받았어요.` : category === "PERSONAL" ? (earnedPoints ? `나의 도감에 추가했어요! ${earnedPoints} 포인트를 받았어요.` : "나의 도감에 기록했어요.") : "미확인 생물함에 안전하게 저장했어요."); clearCapture(); setView(category === "UNIDENTIFIED" ? "unknown" : category === "PERSONAL" ? "personal" : "atlas");
   };
   const nav = (next: View) => { clearCapture(); setView(next); };
   if (!profile || !data) return <AuthScreen view={view} setView={setView} guest={guest} enter={enter} />;
