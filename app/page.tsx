@@ -128,8 +128,9 @@ export default function Home() {
     const observation: Observation = { id: newId(), userId: profile.id, speciesId, temporaryName: category === "PERSONAL" ? (temporaryNameOverride || form.temporaryName || `${result?.detectedGroup ?? "이름을 확인 중인"} 생물`) : undefined, category, photos: observationPhotos, observedAt: now, approximateLocation: form.location || "위치 저장 안 함", habitatType: form.habitat, notes: form.notes, identificationStatus: category === "UNIDENTIFIED" ? "UNIDENTIFIED" : category === "BASE" ? "CONFIRMED" : "REVIEWING", identificationSource: "데모 판별 및 사용자 확인", createdAt: now, updatedAt: now, detectedGroup: result?.detectedGroup, reason: result?.reason };
     const foundSpecies = category === "BASE" ? baseSpecies.find(item => item.id === speciesId) : undefined;
     const personalKey = temporaryNameOverride || form.temporaryName || `${result?.detectedGroup ?? "이름을 확인 중인"} 생물`;
-    const personalExists = category === "PERSONAL" && data.observations.some(item => item.category === "PERSONAL" && (item.temporaryName || item.detectedGroup) === personalKey);
-    const earnedPoints = category === "PERSONAL" ? (personalExists ? 0 : 150) : !existing && foundSpecies ? (foundSpecies.isRareSpecies ? 300 : 100) : 0;
+    const firstBaseRegistration = category === "BASE" && !existing && Boolean(foundSpecies);
+    const firstPersonalRegistration = category === "PERSONAL" && !data.observations.some(item => item.category === "PERSONAL" && (item.temporaryName || item.detectedGroup) === personalKey);
+    const earnedPoints = firstPersonalRegistration ? 150 : firstBaseRegistration ? (foundSpecies!.isRareSpecies ? 300 : 100) : 0;
     update(current => {
       if (category === "BASE" && existing) {
         const matching = current.observations.filter(item => item.speciesId === speciesId);
